@@ -104,3 +104,5 @@ Thumbs.db
 # Customer data files (보안상 제외)
 customer_data.json
 encrypted_data.json
+
+database/
