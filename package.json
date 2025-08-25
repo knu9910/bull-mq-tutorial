@@ -1,0 +1,47 @@
+{
+  "name": "bull-mq",
+  "version": "1.0.0",
+  "description": "SecureBank 개인정보 암호화 프로젝트 - BullMQ를 사용한 배치 처리",
+  "main": "dist/bull-mq.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch bull-mq.ts",
+    "build": "tsc",
+    "start": "node dist/bull-mq.js",
+    "generate-data": "tsx bull-mq.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "bullmq",
+    "queue",
+    "encryption",
+    "batch-processing",
+    "fintech"
+  ],
+  "author": "SecureBank Development Team",
+  "license": "ISC",
+  "packageManager": "pnpm@10.5.2",
+  "dependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "bullmq": "^5.1.0",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "ioredis": "^5.3.2",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "prettier": "^3.1.0",
+    "prettier-plugin-tailwindcss": "^0.5.9",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
