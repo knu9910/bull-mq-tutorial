@@ -12,11 +12,12 @@
 // 3. 실패 시 3번까지 재시도
 // 4. 암호화 진행률 실시간 모니터링
 // 5. 완료 시 관리자에게 알림
-import { faker } from "@faker-js/faker";
-import fs from "fs";
-import path from "path";
-import { encrypt } from "./crypto";
-
+import { faker } from '@faker-js/faker';
+import fs from 'fs';
+import path from 'path';
+import { encrypt } from './crypto';
+import { connection } from './lib/redis-connetion';
+import { Queue } from 'bullmq';
 // 고객 데이터 인터페이스
 interface CustomerData {
   id: string;
@@ -33,54 +34,54 @@ interface CustomerData {
 
 // 한국 이름 생성을 위한 성씨와 이름 데이터
 const koreanLastNames = [
-  "김",
-  "이",
-  "박",
-  "최",
-  "정",
-  "강",
-  "조",
-  "윤",
-  "장",
-  "임",
-  "한",
-  "오",
-  "서",
-  "신",
-  "권",
-  "황",
-  "안",
-  "송",
-  "류",
-  "전",
+  '김',
+  '이',
+  '박',
+  '최',
+  '정',
+  '강',
+  '조',
+  '윤',
+  '장',
+  '임',
+  '한',
+  '오',
+  '서',
+  '신',
+  '권',
+  '황',
+  '안',
+  '송',
+  '류',
+  '전',
 ];
 
 const koreanFirstNames = [
-  "민준",
-  "서준",
-  "도윤",
-  "시우",
-  "주원",
-  "하준",
-  "지호",
-  "지후",
-  "준서",
-  "건우",
-  "서연",
-  "서윤",
-  "지우",
-  "서현",
-  "예은",
-  "하은",
-  "윤서",
-  "지유",
-  "채원",
-  "지원",
+  '민준',
+  '서준',
+  '도윤',
+  '시우',
+  '주원',
+  '하준',
+  '지호',
+  '지후',
+  '준서',
+  '건우',
+  '서연',
+  '서윤',
+  '지우',
+  '서현',
+  '예은',
+  '하은',
+  '윤서',
+  '지유',
+  '채원',
+  '지원',
 ];
 
 // 한국 전화번호 생성
 function generateKoreanPhone(): string {
-  const prefixes = ["010", "011", "016", "017", "018", "019"];
+  const prefixes = ['010', '011', '016', '017', '018', '019'];
   const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
   const middle = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
   const last = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
@@ -89,10 +90,8 @@ function generateKoreanPhone(): string {
 
 // 한국 이름 생성
 function generateKoreanName(): string {
-  const lastName =
-    koreanLastNames[Math.floor(Math.random() * koreanLastNames.length)]!;
-  const firstName =
-    koreanFirstNames[Math.floor(Math.random() * koreanFirstNames.length)]!;
+  const lastName = koreanLastNames[Math.floor(Math.random() * koreanLastNames.length)]!;
+  const firstName = koreanFirstNames[Math.floor(Math.random() * koreanFirstNames.length)]!;
   return lastName + firstName;
 }
 
@@ -102,30 +101,14 @@ function generateSSNLast4(): string {
   const genderCode = Math.floor(Math.random() * 4) + 1;
   const randomDigits = Math.floor(Math.random() * 1000)
     .toString()
-    .padStart(3, "0");
+    .padStart(3, '0');
   return `${genderCode}${randomDigits}`;
 }
 
 // 한국 주소 생성
 function generateKoreanAddress(): string {
-  const cities = [
-    "서울시",
-    "부산시",
-    "대구시",
-    "인천시",
-    "광주시",
-    "대전시",
-    "울산시",
-  ];
-  const districts = [
-    "강남구",
-    "서초구",
-    "송파구",
-    "강동구",
-    "마포구",
-    "용산구",
-    "종로구",
-  ];
+  const cities = ['서울시', '부산시', '대구시', '인천시', '광주시', '대전시', '울산시'];
+  const districts = ['강남구', '서초구', '송파구', '강동구', '마포구', '용산구', '종로구'];
   const city = cities[Math.floor(Math.random() * cities.length)];
   const district = districts[Math.floor(Math.random() * districts.length)];
   const street = faker.location.street();
@@ -139,28 +122,28 @@ function generateCustomerData(id: number): CustomerData {
   const isKorean = Math.random() > 0.3; // 70% 한국인, 30% 외국인
 
   return {
-    id: `CUST${id.toString().padStart(6, "0")}`,
+    id: `CUST${id.toString().padStart(6, '0')}`,
     name: isKorean ? generateKoreanName() : faker.person.fullName(),
     email: faker.internet.email(),
     phone: isKorean ? generateKoreanPhone() : faker.phone.number(),
     ssn_last4: generateSSNLast4(),
-    address: isKorean
-      ? generateKoreanAddress()
-      : faker.location.streetAddress(),
-    birthDate: faker.date
-      .between({
-        from: "1950-01-01",
-        to: "2005-12-31",
-      })
-      ?.toISOString()
-      ?.split("T")[0] || "1950-01-01",
-    joinDate: faker.date
-      .between({
-        from: "2020-01-01",
-        to: "2024-12-31",
-      })
-      ?.toISOString()
-      ?.split("T")[0] || "2020-01-01",
+    address: isKorean ? generateKoreanAddress() : faker.location.streetAddress(),
+    birthDate:
+      faker.date
+        .between({
+          from: '1950-01-01',
+          to: '2005-12-31',
+        })
+        ?.toISOString()
+        ?.split('T')[0] || '1950-01-01',
+    joinDate:
+      faker.date
+        .between({
+          from: '2020-01-01',
+          to: '2024-12-31',
+        })
+        ?.toISOString()
+        ?.split('T')[0] || '2020-01-01',
     accountBalance: Math.floor(Math.random() * 10000000), // 0 ~ 1000만원
     isVip: Math.random() > 0.85, // 15% VIP 고객
   };
@@ -175,13 +158,6 @@ function generateBulkCustomerData(count: number = 20000): CustomerData[] {
 
   for (let i = 1; i <= count; i++) {
     customers.push(generateCustomerData(i));
-
-    // 진행률 표시
-    if (i % 2000 === 0) {
-      console.log(
-        `📊 진행률: ${((i / count) * 100).toFixed(1)}% (${i}/${count})`
-      );
-    }
   }
 
   const endTime = Date.now();
@@ -191,29 +167,20 @@ function generateBulkCustomerData(count: number = 20000): CustomerData[] {
 }
 
 // 데이터를 파일로 저장
-function saveCustomerData(
-  customers: CustomerData[],
-  filename: string = "customer_data.json"
-): void {
+function saveCustomerData(customers: CustomerData[], filename: string = 'customer_data.json'): void {
   console.log(`💾 데이터를 ${filename}에 저장 중...`);
 
   const outputPath = path.join(process.cwd(), filename);
   fs.writeFileSync(outputPath, JSON.stringify(customers, null, 2));
 
-  console.log(
-    `✅ ${customers.length}개 고객 데이터가 ${outputPath}에 저장되었습니다.`
-  );
-  console.log(
-    `📋 파일 크기: ${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(
-      2
-    )} MB`
-  );
+  console.log(`✅ ${customers.length}개 고객 데이터가 ${outputPath}에 저장되었습니다.`);
+  console.log(`📋 파일 크기: ${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)} MB`);
 }
 
 // 샘플 데이터 미리보기
 function previewData(customers: CustomerData[], count: number = 3): void {
-  console.log("\n📋 생성된 데이터 미리보기:");
-  console.log("=".repeat(80));
+  console.log('\n📋 생성된 데이터 미리보기:');
+  console.log('='.repeat(80));
 
   customers.slice(0, count).forEach((customer, index) => {
     console.log(`\n고객 #${index + 1}:`);
@@ -226,63 +193,35 @@ function previewData(customers: CustomerData[], count: number = 3): void {
     console.log(`  생년월일: ${customer.birthDate}`);
     console.log(`  가입일: ${customer.joinDate}`);
     console.log(`  계좌잔액: ${customer.accountBalance.toLocaleString()}원`);
-    console.log(`  VIP 여부: ${customer.isVip ? "⭐ VIP" : "일반"}`);
+    console.log(`  VIP 여부: ${customer.isVip ? '⭐ VIP' : '일반'}`);
   });
 
-  console.log("=".repeat(80));
+  console.log('='.repeat(80));
 }
 
 // 메인 실행 함수
 async function main() {
-  console.log("🏦 SecureBank 고객 데이터 생성기 v1.0");
-  console.log("📋 개인정보보호법 대응을 위한 암호화 대상 데이터 생성\n");
+  console.log('🏦 SecureBank 고객 데이터 생성기 v1.0');
+  console.log('📋 개인정보보호법 대응을 위한 암호화 대상 데이터 생성\n');
 
   try {
     // 1. 대용량 고객 데이터 생성
     const customerData = generateBulkCustomerData(20000);
 
-    // // 2. 샘플 데이터 미리보기
-    // previewData(customerData);
-  
-    const encryptedData = await Promise.all(
-      customerData.map(async (customer) => ({
-        ...customer,
-        name: await encrypt(customer.name),
-        email: await encrypt(customer.email),
-        phone: await encrypt(customer.phone),
-        ssn_last4: await encrypt(customer.ssn_last4),
-      }))
+    const queue = new Queue('customer-data', { connection });
+
+    // 2. 파일로 저장
+    saveCustomerData(customerData);
+
+    // 3. 데이터를 큐에 추가
+    await queue.addBulk(
+      customerData.map((customer) => ({
+        name: 'customer-data',
+        data: customer,
+      })),
     );
-    console.log(encryptedData);
-
-
-    // // 3. 통계 정보 출력
-    // const vipCount = customerData.filter((c) => c.isVip).length;
-    // const avgBalance =
-    //   customerData.reduce((sum, c) => sum + c.accountBalance, 0) /
-    //   customerData.length;
-
-    // console.log("\n📊 데이터 통계:");
-    // console.log(`  총 고객 수: ${customerData.length.toLocaleString()}명`);
-    // console.log(
-    //   `  VIP 고객 수: ${vipCount.toLocaleString()}명 (${(
-    //     (vipCount / customerData.length) *
-    //     100
-    //   ).toFixed(1)}%)`
-    // );
-    // console.log(
-    //   `  평균 계좌잔액: ${Math.floor(avgBalance).toLocaleString()}원`
-    // );
-
-    // // 4. 파일로 저장
-    // saveCustomerData(customerData);
-
-    // console.log("\n🚀 다음 단계: BullMQ를 사용한 배치 암호화 처리");
-    // console.log("   - 100개씩 200개 작업으로 분할");
-    // console.log("   - CPU 사용률 50% 제한");
-    // console.log("   - 암호화 대상: name, email, phone, ssn_last4, address");
   } catch (error) {
-    console.error("❌ 데이터 생성 중 오류 발생:", error);
+    console.error('❌ 데이터 생성 중 오류 발생:', error);
   }
 }
 
@@ -292,8 +231,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export type { CustomerData };
-export {
-  generateCustomerData,
-  generateBulkCustomerData,
-  saveCustomerData,
-};
+export { generateCustomerData, generateBulkCustomerData, saveCustomerData };
