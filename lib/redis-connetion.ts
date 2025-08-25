@@ -11,6 +11,7 @@ export const connection = new IORedis({
   port: Number(redisPort!),
   password: redisPassword ?? '1234',
   db: Number(redisDb!),
+  maxRetriesPerRequest: null,
 });
 
 export const encryptQueue = new Queue('encrypt', { connection });
