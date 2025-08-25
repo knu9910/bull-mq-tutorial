@@ -12,12 +12,11 @@
 // 3. 실패 시 3번까지 재시도
 // 4. 암호화 진행률 실시간 모니터링
 // 5. 완료 시 관리자에게 알림
+import 'dotenv/config';
 import { faker } from '@faker-js/faker';
 import fs from 'fs';
 import path from 'path';
-import { encrypt } from './crypto';
-import { connection, encryptQueue } from './lib/redis-connetion';
-import { Queue } from 'bullmq';
+import { encryptQueue } from './lib/redis-connetion';
 import { chunkArray } from './utils/chunk';
 import { checkQueue } from './utils/queue/check-queue';
 import { resetQueue } from './utils/queue/reset-queue';
