@@ -16,8 +16,11 @@ import { faker } from '@faker-js/faker';
 import fs from 'fs';
 import path from 'path';
 import { encrypt } from './crypto';
-import { connection } from './lib/redis-connetion';
+import { connection, encryptQueue } from './lib/redis-connetion';
 import { Queue } from 'bullmq';
+import { chunkArray } from './utils/chunk';
+import { checkQueue } from './utils/queue/check-queue';
+import { resetQueue } from './utils/queue/reset-queue';
 // 고객 데이터 인터페이스
 interface CustomerData {
   id: string;
@@ -177,28 +180,6 @@ function saveCustomerData(customers: CustomerData[], filename: string = 'custome
   console.log(`📋 파일 크기: ${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)} MB`);
 }
 
-// 샘플 데이터 미리보기
-function previewData(customers: CustomerData[], count: number = 3): void {
-  console.log('\n📋 생성된 데이터 미리보기:');
-  console.log('='.repeat(80));
-
-  customers.slice(0, count).forEach((customer, index) => {
-    console.log(`\n고객 #${index + 1}:`);
-    console.log(`  ID: ${customer.id}`);
-    console.log(`  이름: ${customer.name}`);
-    console.log(`  이메일: ${customer.email}`);
-    console.log(`  전화번호: ${customer.phone}`);
-    console.log(`  주민번호 뒷자리: ${customer.ssn_last4} (🔒 암호화 대상)`);
-    console.log(`  주소: ${customer.address}`);
-    console.log(`  생년월일: ${customer.birthDate}`);
-    console.log(`  가입일: ${customer.joinDate}`);
-    console.log(`  계좌잔액: ${customer.accountBalance.toLocaleString()}원`);
-    console.log(`  VIP 여부: ${customer.isVip ? '⭐ VIP' : '일반'}`);
-  });
-
-  console.log('='.repeat(80));
-}
-
 // 메인 실행 함수
 async function main() {
   console.log('🏦 SecureBank 고객 데이터 생성기 v1.0');
@@ -207,19 +188,13 @@ async function main() {
   try {
     // 1. 대용량 고객 데이터 생성
     const customerData = generateBulkCustomerData(20000);
+    const batches = chunkArray(customerData, 100); // 100개씩 나누기
+    await resetQueue();
+    await Promise.all(batches.map((batch, index) => encryptQueue.add('encrypt-batch', { batch, batchIndex: index })));
 
-    const queue = new Queue('customer-data', { connection });
-
+    await checkQueue();
     // 2. 파일로 저장
     saveCustomerData(customerData);
-
-    // 3. 데이터를 큐에 추가
-    await queue.addBulk(
-      customerData.map((customer) => ({
-        name: 'customer-data',
-        data: customer,
-      })),
-    );
   } catch (error) {
     console.error('❌ 데이터 생성 중 오류 발생:', error);
   }
@@ -228,6 +203,10 @@ async function main() {
 // 스크립트 실행
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();
+  process.on('SIGINT', () => {
+    console.log('🏦 SecureBank 고객 데이터 생성기 v1.0 종료');
+    process.exit(0);
+  });
 }
 
 export type { CustomerData };

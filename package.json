@@ -2,13 +2,12 @@
   "name": "bull-mq",
   "version": "1.0.0",
   "description": "SecureBank 개인정보 암호화 프로젝트 - BullMQ를 사용한 배치 처리",
-  "main": "dist/bull-mq.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch bull-mq.ts",
+    "dev": "tsx watch index.ts",
     "build": "tsc",
-    "start": "node dist/bull-mq.js",
-    "generate-data": "tsx bull-mq.ts",
+    "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit"

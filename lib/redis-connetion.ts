@@ -1,3 +1,4 @@
+import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 
 const redisHost = process.env['REDIS_HOST'];
@@ -11,6 +12,8 @@ export const connection = new IORedis({
   password: redisPassword ?? '1234',
   db: Number(redisDb!),
 });
+
+export const encryptQueue = new Queue('encrypt', { connection });
 
 connection.on('connect', () => {
   console.log('Redis connected');
